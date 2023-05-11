@@ -9,6 +9,11 @@ This Python module is a PySideX-based interface module that allows users to crea
 *`python -m pip install PySide2-Customized-Window`*
 <br>
 *`python -m pip install PySide6-Customized-Window`*
+### 截图 Screenshots
+![ReactOS](./jietu/ReactOS.png)
+![WinVista](./jietu/WinVista.png)
+![Win10](./jietu/Win10.png)
+![Win11](./jietu/Win11.png)
 ### 示例代码 Example code
 ```
 # -*- coding: utf-8 -*-
