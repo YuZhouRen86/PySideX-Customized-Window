@@ -4,13 +4,13 @@
 <br>
 This Python module is a PySideX-based interface module that allows users to create custom non-client windows, which are drawn using PySideX and support moving, minimizing, maximizing, auto-layout of borders, background blurring, etc. There are 3 branches: PySide1-Customized-Window, PySide2- Customized-Window, PySide6-Customized-Window, which correspond to PySide1/PySide2/PySide6 respectively. It only supports Windows, ReactOS and Wine.
 ### 截图 Screenshots
-![ReactOS](./jietu/ReactOS.png)
+![ReactOS](https://github.com/YuZhouRen86/PySideX-Customized-Window/raw/main/jietu/ReactOS.png)
 <br>
-![WinVista](./jietu/WinVista.png)
+![WinVista](https://github.com/YuZhouRen86/PySideX-Customized-Window/raw/main/jietu/WinVista.png)
 <br>
-![Win10](./jietu/Win10.png)
+![Win10](https://github.com/YuZhouRen86/PySideX-Customized-Window/raw/main/jietu/Win10.png)
 <br>
-![Win11](./jietu/Win11.png)
+![Win11](https://github.com/YuZhouRen86/PySideX-Customized-Window/raw/main/jietu/Win11.png)
 ### 安装命令 Installation command
 *`python -m pip install PySide1-Customized-Window`*
 <br>
