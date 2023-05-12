@@ -27,6 +27,8 @@ from PySide2_Customized_Window import *
 class MyWindow(CustomizedWindow):
     def __init__(self):
         super(MyWindow, self).__init__()
+    def MessageHandler(self, hwnd, message, wParam, lParam):
+        print(hwnd, message, wParam, lParam)
 QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
