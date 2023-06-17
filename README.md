@@ -21,7 +21,9 @@ This Python module is a PySideX-based interface module that allows users to crea
 ```
 # -*- coding: utf-8 -*-
 import sys
-#from PySide2 import *
+from PySide2.QtWidgets import *
+from PySide2.QtGui import *
+from PySide2.QtCore import *
 from PySide2_Customized_Window import *
 #class MyWindow(BlurWindow):
 class MyWindow(CustomizedWindow):
@@ -34,11 +36,15 @@ QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 app = QApplication(sys.argv)
 window = MyWindow()
+list(map(window.setTitleTextColour, [QColor(0, 0, 139), QColor(119, 235, 255)], [1, 2], [1] * 2))
 window.setWindowTitle('Window')
 window.setDarkTheme(2)
-window.resize(int(400.0 * window.dpi / 96.0), int(175.0 * window.dpi / 96.0))
 window.setWindowIcon(QIcon('Icon.ico'))
+splashscreen = window.splashScreen()
+splashscreen.show()
+window.resize(int(400.0 * window.dpi() / 96.0), int(175.0 * window.dpi() / 96.0))
 button = QPushButton('Button', window.clientArea)
 window.show()
+splashscreen.finish(window)
 app.exec_()
 ```
