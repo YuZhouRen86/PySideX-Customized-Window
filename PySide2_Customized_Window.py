@@ -25,6 +25,9 @@ SWP_NOSIZE, SWP_NOMOVE, SWP_NOZORDER, SWP_FRAMECHANGED, SWP_NOSENDCHANGING = 0x1
 VK_LBUTTON = 0x1
 
 
+ISWINE = hasattr(ctypes.windll.ntdll, 'wine_get_version')
+
+
 class LOGFONT(ctypes.Structure):
     _fields_ = [
     ('lfHeight', ctypes.c_long),
@@ -273,8 +276,8 @@ class SystemLbl(SystemLblBtnBase):
         elif self.isttliconcontainerlbl:
             self.setFixedSize(*[ttl_h] * 2)
         elif self.isttliconlbl:
-            pixmap = parent.windowIcon().pixmap(self.width(), self.height())
-            if self.draw: painter.drawPixmap(0, 0, pixmap)
+            icon = QPixmap.fromImage(parent.windowIcon().pixmap(self.size()).toImage()).scaled(self.size())
+            if self.draw: painter.drawPixmap(0, 0, icon)
         painter.setBrush(bgclr)
         painter.setPen(Qt.NoPen)
         painter.drawRect(self.rect())
@@ -335,6 +338,7 @@ def wdXYWH(hwnd, x=0, y=0, w=0, h=0):
 
 def isAeroEnabled():
     try:
+        assert not ISWINE
         pfEnabled = ctypes.c_ulong()
         ctypes.windll.dwmapi.DwmIsCompositionEnabled(ctypes.byref(pfEnabled))
         return pfEnabled.value
@@ -469,7 +473,7 @@ class CustomizedWindow(QWidget):
         if isAeroEnabled(): self.__setDWMEffect(self.__isblurwindow)
         self.__rdpi = getdpiforwindow(hwnd)
         self.__hdpisfroundingpolicy = 3
-        self.__hdpiscalingenabled = (hasattr(Qt, 'AA_EnableHighDpiScaling') and QApplication.testAttribute(Qt.AA_EnableHighDpiScaling)) or SIDEVER >= 6
+        self.__hdpiscalingenabled = SIDEVER >= 6 or (hasattr(Qt, 'AA_EnableHighDpiScaling') and QApplication.testAttribute(Qt.AA_EnableHighDpiScaling))
         if hasattr(Qt, 'HighDpiScaleFactorRoundingPolicy'):
             QHDSFRP = Qt.HighDpiScaleFactorRoundingPolicy
             QADSFRP = QApplication.highDpiScaleFactorRoundingPolicy()
@@ -620,8 +624,16 @@ class CustomizedWindow(QWidget):
         if SIDEVER == 1:
             if res != 0: res = wdXYWH(self.hwnd(), h=res)[3]
         return res
-    def x(self, *a): return clXYWH(self.hwnd(), x=res)[0] if SIDEVER == 1 else sCW(self).x(*a)
-    def y(self, *a): return clXYWH(self.hwnd(), y=res)[1] if SIDEVER == 1 else sCW(self).y(*a)
+    def x(self, *a):
+        res = sCW(self).x(*a)
+        if SIDEVER == 1:
+            if res != 0: res = clXYWH(self.hwnd(), x=res)[0]
+        return res
+    def y(self, *a):
+        res = sCW(self).y(*a)
+        if SIDEVER == 1:
+            if res != 0: res = clXYWH(self.hwnd(), y=res)[1]
+        return res
     def dpi(self):
         '''DPI divided by 96.0 is the scale factor of PySideX UI.
 Example:
