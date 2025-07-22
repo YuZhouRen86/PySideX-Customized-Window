@@ -16,7 +16,7 @@ __all__ = ['CustomizedWindow', 'BlurWindow']
 
 
 user32 = ctypes.windll.user32
-WM_SIZE, WM_SHOWWINDOW, WM_SETTINGCHANGE, WM_STYLECHANGED, WM_NCCALCSIZE, WM_NCHITTEST, WM_NCPAINT, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP, WM_SYSCOMMAND, WM_DPICHANGED, WM_DWMCOMPOSITIONCHANGED = 0x5, 0x18, 0x1a, 0x7d, 0x83, 0x84, 0x85, 0xa1, 0xa2, 0x112, 0x2e0, 0x31e
+WM_SIZE, WM_SHOWWINDOW, WM_SETTINGCHANGE, WM_STYLECHANGED, WM_NCCALCSIZE, WM_NCHITTEST, WM_NCPAINT, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP, WM_SYSCOMMAND, WM_ENTERSIZEMOVE, WM_EXITSIZEMOVE, WM_DPICHANGED, WM_DWMCOMPOSITIONCHANGED = 0x5, 0x18, 0x1a, 0x7d, 0x83, 0x84, 0x85, 0xa1, 0xa2, 0x112, 0x231, 0x232, 0x2e0, 0x31e
 SC_SIZE, SC_MOVE, SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE, SC_RESTORE = 0xf000, 0xf010, 0xf020, 0xf030, 0xf060, 0xf120
 HTCLIENT, HTCAPTION, HTMINBUTTON, HTMAXBUTTON, HTCLOSE = 0x1, 0x2, 0x8, 0x9, 0x14
 HTLEFT, HTRIGHT, HTTOP, HTTOPLEFT, HTTOPRIGHT, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTBORDER = range(0xa, 0x13)
@@ -85,17 +85,20 @@ class Win10BlurEffect:
     def __initAP(self, a, b, c, d):
         b = ctypes.c_ulong(int(b, base=16))
         d = ctypes.c_ulong(d)
-        accentFlags = ctypes.c_ulong(0x20 | 0x40 | 0x80 | 0x100 | 0x200 if c else 0)
+        accentFlags = ctypes.c_ulong(0x2 | 0x20 | 0x40 | 0x80 | 0x100 | 0x200 if c else 0x2)
         self.accentPolicy.AccentState = a
         self.accentPolicy.GradientColor = b
         self.accentPolicy.AccentFlags = accentFlags
         self.accentPolicy.AnimationId = d
     def __mainFunc(self, hwnd): return user32.SetWindowCompositionAttribute(hwnd, ctypes.byref(self.winCompAttrData))
-    def setAeroEffect(self, hwnd, gradientColor='01000000', isEnableShadow=True, animationId=0):
+    def setAeroEffect(self, hwnd, gradientColor='007F7F7F', isEnableShadow=False, animationId=0):
         self.__initAP(self.ACCENT_ENABLE_BLURBEHIND, gradientColor, isEnableShadow, animationId)
         return self.__mainFunc(hwnd)
-    def setAcrylicEffect(self, hwnd, gradientColor='01000000', isEnableShadow=True, animationId=0):
+    def setAcrylicEffect(self, hwnd, gradientColor='007F7F7F', isEnableShadow=False, animationId=0):
         self.__initAP(self.ACCENT_ENABLE_ACRYLICBLURBEHIND, gradientColor, isEnableShadow, animationId)
+        return self.__mainFunc(hwnd)
+    def disableEffect(self, hwnd):
+        self.__initAP(0, '007F7F7F', 0, 0)
         return self.__mainFunc(hwnd)
 
 
@@ -240,7 +243,6 @@ class SystemLbl(SystemLblBtnBase):
         isdarktheme = parent.isDarkTheme()
         isblurwindow = self.parentattr('isblurwindow')
         isaeroenabled = isAeroEnabled()
-        disabledtp_22h2w11 = disabledTp_22H2W11()
         isactivewindow = parent.hwnd() == user32.GetForegroundWindow()
         NMAXFULL = not (self.isMax() or parent.isFullScreen())
         painter = QPainter(self)
@@ -249,7 +251,7 @@ class SystemLbl(SystemLblBtnBase):
         ttl_h = self.parentattr('ttl_h')
         f1 = lambda pen: (painter.setBrush(Qt.NoBrush), painter.setPen(pen))
         f2 = lambda n: QColor(*[6 if isdarktheme else 249] * 3 + [n])
-        if self.isbglbl: bgclr = Qt.transparent if (isblurwindow and isaeroenabled and not disabledtp_22h2w11) else QColor(*[58 if isdarktheme else 197] * 3)
+        if self.isbglbl: bgclr = QColor(127, 127, 127, 1) if (isblurwindow and isaeroenabled) else QColor(*[58 if isdarktheme else 197] * 3)
         elif self.isttlbar:
             self.setFixedHeight(ttl_h)
             if isblurwindow:
@@ -302,6 +304,12 @@ class TtlIconLbl(SystemLbl): pass
 def sCW(obj): return super(CustomizedWindow, obj)
 
 
+def GetWindowsSystemVersion():
+    dwMajor, dwMinor, dwBuildNumber = [ctypes.c_ulong() for i in range(3)]
+    ctypes.windll.ntdll.RtlGetNtVersionNumbers(ctypes.byref(dwMajor), ctypes.byref(dwMinor), ctypes.byref(dwBuildNumber))
+    return (dwMajor.value, dwMinor.value, dwBuildNumber.value & ~0xf0000000)
+
+
 def GetRC(hwnd):
     rc = RECT()
     user32.GetWindowRect(hwnd, ctypes.byref(rc))
@@ -336,13 +344,6 @@ def isAeroEnabled():
 def isdarktheme():
     try: return not winreg.QueryValueEx(winreg.OpenKey(winreg.HKEY_CURRENT_USER, 'Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'), 'AppsUseLightTheme')[0]
     except: return False
-
-
-def disabledTp_22H2W11():
-    E_22H2, V_22H2 = 38, 3
-    try: return not winreg.QueryValueEx(winreg.OpenKey(winreg.HKEY_CURRENT_USER, 'Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'), 'EnableTransparency')[0] and not ctypes.windll.dwmapi.DwmGetWindowAttribute(ctypes.windll.user32.GetForegroundWindow(), E_22H2, ctypes.byref(ctypes.c_long(0)), ctypes.sizeof(ctypes.c_long))
-    except: return False
-
 
 
 def getMonitorRectForWindow(hwnd, workarea=False):
@@ -408,8 +409,8 @@ def getautohidetbpos(rc=RECT(*[0] * 4)):
     return 4
 
 
-def setwin11blur(hwnd):
-    E_21H2, E_22H2, V_21H2, V_22H2 = 1029, 38, 1, 3
+def setwin11blur(hwnd, material=2):
+    E_21H2, E_22H2, V_21H2, V_22H2 = 1029, 38, 1, material
     return list(map(ctypes.windll.dwmapi.DwmSetWindowAttribute, [hwnd] * 2, [E_21H2, E_22H2], [ctypes.byref(ctypes.c_long(V_21H2)), ctypes.byref(ctypes.c_long(V_22H2))], [ctypes.sizeof(ctypes.c_long)] * 2))
 
 
@@ -450,6 +451,7 @@ class CustomizedWindow(QWidget):
     '''A customized window based on PySideX.'''
     def __init__(self):
         self.__isblurwindow = isinstance(self, BlurWindow)
+        self.__blurmtrl = 0
         self.__ncsizeinited, self.__windowinited = [False] * 2
         self.__flashinnextmessage_inf = [False, 0, 0, 0, 0]
         self.__maxwithmgn = False
@@ -733,6 +735,17 @@ state=0: All; state=1: Active; state=2: Inactive'''
             raise ErrorType('Parameter colour must be 0, %s or %s.' % (Qt.GlobalColor, QColor))
         self.__menubtnclr_l_ac, self.__menubtnclr_d_ac, self.__menubtnclr_l_in, self.__menubtnclr_d_in = clr_l_ac, clr_d_ac, clr_l_in, clr_d_in
         [i.update() for i in [self.__minBtn, self.__maxBtn, self.__clsBtn]]
+    def setBlurMaterial(self, material):
+        '''This function is only avaliable in BlurWindow.
+material=0: Glass; material=1: Acrylic; material=2: Mica; material=3: MicaVariant'''
+        if isinstance(self, BlurWindow):
+            if material in [0, 1, 2, 3]:
+                self.__blurmtrl = material
+                self.__setDWMEffect(self.__isblurwindow)
+            else:
+                ErrorType = ValueError if type(material) == int else TypeError
+                raise ErrorType('Parameter material must be 0, 1, 2 or 3.')
+        else: raise Exception('This function is only avaliable in BlurWindow.')
     def setClientAreaBackgroundOpacity(self, opacity):
         '''This function is only avaliable in BlurWindow.
 opacity=0: transparent; opacity=255: opaque'''
@@ -764,7 +777,6 @@ opacity=0: transparent; opacity=255: opaque'''
         self.__ncsizeinited, self.__windowinited = [False] * 2
         if SIDEVER == 1:
             self.__SWL(hwnd, -4, BasicMHAddr.value)
-            ctypes.cdll.msvcrt._aligned_free(BasicMHAddr.value)
         self.__hasresizablebd, self.__hasminbtn, self.__hasmaxbtn = windowlong & 0x40000, windowlong & 0x20000, windowlong & 0x10000
         if isAeroEnabled(): self.__setDWMEffect(self.__isblurwindow)
         if updtnc: self.__updtnc()
@@ -875,6 +887,20 @@ class MyOwnWindow(BlurWindow):
             if res not in [HTMINBUTTON, HTMAXBUTTON, HTCLOSE] and not isLBtnDown: self.__setMBS(0)
             self.__last_nchttst_res = res
             return res
+        if message == WM_ENTERSIZEMOVE:
+            try:
+                assert self.__acryliconw10enabled
+                w10be = Win10BlurEffect()
+                w10be.disableEffect(hwnd)
+                w10be.setAeroEffect(hwnd)
+            except: pass
+        if message == WM_EXITSIZEMOVE:
+            try:
+                assert self.__acryliconw10enabled
+                w10be = Win10BlurEffect()
+                w10be.disableEffect(hwnd)
+                w10be.setAcrylicEffect(hwnd)
+            except: pass
         if message == WM_SHOWWINDOW:
             if not self.__windowinited:
                 f1 = lambda a: user32.SetWindowPos(hwnd, None, windowx + a, windowy + a, w, h, SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOSENDCHANGING)
@@ -948,17 +974,38 @@ class MyOwnWindow(BlurWindow):
         return sCW(self).nativeEvent(eventType, msg)
     def __setDWMEffect(self, blur=False):
         hwnd = self.hwnd()
+        self.__acryliconw10enabled = False
         try:
             dwmapi = ctypes.windll.dwmapi
-            f1 = lambda n: dwmapi.DwmExtendFrameIntoClientArea(hwnd, ctypes.byref(MARGINS(*[n] * 4)))
+            f1 = lambda n: dwmapi.DwmExtendFrameIntoClientArea(hwnd, ctypes.byref(MARGINS(0, 0, 0, n)))
             if blur:
-                w11_21h2_blur_code, w11_22h2_blur_code = setwin11blur(hwnd)
-                if w11_22h2_blur_code:
-                    f1(1)
+                w11_21h2_blur_code, w11_22h2_blur_code = setwin11blur(hwnd, {0: 3, 1: 3, 2: 2, 3: 4}[self.__blurmtrl])
+                try:
+                    if w11_22h2_blur_code and w11_21h2_blur_code and self.__blurmtrl in [1, 2, 3]:
+                        assert GetWindowsSystemVersion() >= (10, 0, 17134)
+                        w10be = Win10BlurEffect()
+                        w10be.disableEffect(hwnd)
+                        w10_blur_code = w10be.setAcrylicEffect(hwnd)
+                        if w10_blur_code:
+                            self.__acryliconw10enabled = True
+                            dwmapi.DwmEnableBlurBehindWindow(ctypes.c_long(hwnd), ctypes.byref(DWM_BLURBEHIND(1, 0, 0, 0)))
+                            f1(1)
+                            return 2
+                except: pass
+                if (not w11_22h2_blur_code) or (self.__blurmtrl == 2 and not w11_21h2_blur_code):
+                    try:
+                        w10be = Win10BlurEffect()
+                        w10be.disableEffect(hwnd)
+                    except: pass
+                    f1(16777215)
+                    return 3
+                else:
+                    f1(16777215 if self.__blurmtrl in [1, 2, 3] else 1)
                     dwmapi.DwmEnableBlurBehindWindow(ctypes.c_long(hwnd), ctypes.byref(DWM_BLURBEHIND(1, 1, 0, 0)))
                 try:
-                    AeroEffect = Win10BlurEffect()
-                    w10_blur_code = AeroEffect.setAeroEffect(hwnd, isEnableShadow=not w11_22h2_blur_code)
+                    w10be = Win10BlurEffect()
+                    w10be.disableEffect(hwnd)
+                    w10_blur_code = w10be.setAeroEffect(hwnd)
                     if w10_blur_code != 0: return 2
                 except: pass
             else: f1(1)
@@ -1016,10 +1063,11 @@ if __name__ == '__main__':
     help(window.setMenuButtonColour)
     CallWithHelp(window.setDarkTheme, [0])
     CallWithHelp(window.setClientAreaBackgroundOpacity, [107])
+    CallWithHelp(window.setBlurMaterial, [1])
     window.setWindowIcon(QIcon('Icon.ico'))
     splashscreen = CallWithHelp(window.splashScreen, [])
     splashscreen.show()
-    window.setFixedSize(*window.getWindowSizeByClientSize([int(400 * window.dpi() / 96.0), int(175 * window.dpi() / 96.0)]))
+    window.resize(*window.getWindowSizeByClientSize([int(400 * window.dpi() / 96.0), int(175 * window.dpi() / 96.0)]))
     help(window.getWindowSizeByClientSize)
     window.setWindowTitle('Window')
     btn = QPushButton('Button', window.clientArea)
